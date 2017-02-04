@@ -9,7 +9,7 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 
 /**
- * Client that is connecting to the server (host and port) and sending messages.
+ * Client that is connecting to the server (host and port) and sends messages.
  * 
  * @author Helena
  *
@@ -17,44 +17,70 @@ import java.net.UnknownHostException;
 public class Client {
 	
 	/** Host name.*/
-	private static String host = "localhost";
+	private String host;
 	
 	/** Port to which is connecting.*/
-	private static int port = 1500;
+	private int port;
 	
 	/** Client username.*/
-	private static String username = "Anonimus";
+	private String username;
 	
 	/**
-	 * Start client using command line.
+	 * Client with default values localhost 1500 Anonimus.
+	 */
+	public Client() {
+		
+		this("localhost", 1500, "Anonimus");
+		
+	}
+
+	/**
+	 * Client with values in parameters.
+	 * @param host host
+	 * @param port port
+	 * @param username username
+	 */
+	public Client(String host, int port, String username) {
+		
+		super();
+		this.host = host;
+		this.port = port;
+		this.username = username;
+		
+	}
+
+	/**
+	 * Start client using command line (>java Client [host] [port] [username]).
 	 * 
 	 * @param args arg0 - host, arg1 - port, arg2 - username;
-	 * default: localhost 1500
+	 * default: localhost 1500 Anonimus
 	 */
 	public static void main(String[] args) {
 		
-		host = args.length > 0 ? args[0] : host;
+		String host = args.length > 0 ? args[0] : "localhost";
 		
-		port = args.length > 1 ? Integer.parseInt(args[1]) : port;
+		int port = args.length > 1 ? Integer.parseInt(args[1]) : 1500;
 
-		username = args.length > 2 ? args[2] : username;
+		String username = args.length > 2 ? args[2] :  "Anonimus";
 		
-		startClient();
+		Client client = new Client(host, port, username);
+		
+		client.startClient();
 		
 	}
 
 	/**
 	 * Starts the client.
 	 */
-	private static void startClient() {
+	private void startClient() {
 		
 		try {
 			
-			System.out.println("Connecting to " + host + " on port " + port);
+			System.out.println("Connecting to " + getHost() + " on port " + getPort());
 			
-			Socket clientSocket = new Socket(host, port);
+			Socket clientSocket = new Socket(getHost(), getPort());
 			
-			System.out.println("User " + username + " connected to server");
+			System.out.println("User " + getUsername() + " connected to server");
 			
 			PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
 			
@@ -62,8 +88,10 @@ public class Client {
 			
 			BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in));
 			
-			out.println(username);
+			// first send your username
+			out.println(getUsername());
 			System.out.println("echo: " + in.readLine());
+			
 			System.out.println("Plese input message line:");
 			
 			String userInput;
@@ -79,11 +107,37 @@ public class Client {
 			
 			
 		} catch (UnknownHostException e) {
-			e.printStackTrace();
+
+			System.out.println("Could not connect to server: " + getHost() + " on port " + getPort());
+			
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 		
+	}
+
+	public String getHost() {
+		return host;
+	}
+
+	public void setHost(String host) {
+		this.host = host;
+	}
+
+	public int getPort() {
+		return port;
+	}
+
+	public void setPort(int port) {
+		this.port = port;
+	}
+
+	public String getUsername() {
+		return username;
+	}
+
+	public void setUsername(String username) {
+		this.username = username;
 	}
 
 }

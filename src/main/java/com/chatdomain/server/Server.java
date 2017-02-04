@@ -1,12 +1,8 @@
 package com.chatdomain.server;
 
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
 import java.net.ServerSocket;
-import java.net.Socket;
 
 /**
  * Server that waits on the port.
@@ -17,64 +13,90 @@ import java.net.Socket;
 public class Server {
 	
 	/** Port on which is waiting.*/
-	private static int port = 1500;
+	private int port;
+	
+	/** True= server is running, false = server has stopped.*/
+	private boolean isRunning = true;
 
 	/**
-	 * Start server using command line.
+	 * Server on default port 1500.
+	 */
+	public Server() {
+		
+		this(1500);
+		
+	}
+
+	/**
+	 * Server on port from parameter.
+	 * @param port port
+	 */
+	public Server(int port) {
+		
+		super();
+		this.port = port;
+		
+	}
+
+	/**
+	 * Start server using command line (>java com.chatdomain.server.Server [port]).
 	 * 
-	 * @param args arg0 - port, default: 1500
+	 * @param args arg0 = port, default: 1500
 	 */
 	public static void main(String[] args) {
 		
-		port = args.length > 0 ? Integer.parseInt(args[0]) : port;
+		int port = args.length > 0 ? Integer.parseInt(args[0]) : 1500;
 		
-		startServer();
+		Server server = new Server(port);
+		
+		server.startServer();
 		
 	}
 
 	/**
 	 * Starts the server.
 	 */
-	private static void startServer() {
+	private void startServer() {
 		
 		try {
 			
-			ServerSocket serverSocket = new ServerSocket(port);
+			ServerSocket serverSocket = new ServerSocket(getPort());
 			
-			System.out.println("Waiting for client on port " + port + "...");
+			System.out.println("Waiting for client on port " + getPort() + "...");
 			
-			Socket clinetSocket = serverSocket.accept();
-
-			PrintWriter out = new PrintWriter(clinetSocket.getOutputStream(), true);
-			
-			BufferedReader in = new BufferedReader(new InputStreamReader(clinetSocket.getInputStream()));
-			
-			String username = in.readLine(); // first line that is sent
-
-			System.out.println("Client " + username + " accapted");
-			
-			String inputLine;
-			String outputLine = "Welcome " + username;
-			
-			out.println(outputLine);
-			
-			while ((inputLine = in.readLine()) != null) {
-
-				System.out.println("Reading line from client "+ username +": " + inputLine);
+			while (isRunning) {
 				
-				outputLine = "Received " + inputLine;
+				// start new thread after accepting connection with client
+				ServerThread serverThread = new ServerThread(serverSocket.accept());
 				
-				out.println(outputLine);
-				
+				serverThread.start();
+			
 			}
 			
 			serverSocket.close();
 			
 		} catch (IOException e) {
-			e.printStackTrace();
+			
+			System.out.println("Could not start server on port: " + getPort());
+			
 		}
 		
 	}
 
+	public int getPort() {
+		return port;
+	}
 
+	public void setPort(int port) {
+		this.port = port;
+	}
+
+	public boolean isRunning() {
+		return isRunning;
+	}
+
+	public void setRunning(boolean isRunning) {
+		this.isRunning = isRunning;
+	}
+	
 }
