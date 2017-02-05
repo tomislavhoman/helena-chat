@@ -2,11 +2,9 @@ package com.chatdomain.client;
 
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
-import java.net.UnknownHostException;
 
 /**
  * Client that is connecting to the server (host and port) and sends messages.
@@ -24,6 +22,15 @@ public class Client {
 	
 	/** Client username.*/
 	private String username;
+	
+	/** Client socket.*/
+	private Socket socket;
+	
+	/** Output writer.*/
+	private PrintWriter out;
+	
+	/** Input reader.*/
+	private BufferedReader in;
 	
 	/**
 	 * Client with default values localhost 1500 Anonimus.
@@ -50,94 +57,110 @@ public class Client {
 	}
 
 	/**
-	 * Start client using command line (>java Client [host] [port] [username]).
+	 * Start client using command line (>java com.chatdomain.client.Client [username] [host] [port]).
 	 * 
 	 * @param args arg0 - host, arg1 - port, arg2 - username;
 	 * default: localhost 1500 Anonimus
 	 */
 	public static void main(String[] args) {
-		
-		String host = args.length > 0 ? args[0] : "localhost";
-		
-		int port = args.length > 1 ? Integer.parseInt(args[1]) : 1500;
 
-		String username = args.length > 2 ? args[2] :  "Anonimus";
+		String username = args.length > 0 ? args[0] :  "Anonimus";
 		
+		String host = args.length > 1 ? args[1] : "localhost";
+		
+		int port = args.length > 2 ? Integer.parseInt(args[2]) : 1500;
+
 		Client client = new Client(host, port, username);
 		
-		client.startClient();
+		client.start();
 		
 	}
 
 	/**
 	 * Starts the client.
 	 */
-	private void startClient() {
+	public void start() {
 		
 		try {
 			
-			System.out.println("Connecting to " + getHost() + " on port " + getPort());
+			System.out.println("Connecting to " + host + " on port " + port);
 			
-			Socket clientSocket = new Socket(getHost(), getPort());
+			socket = new Socket(host, port);
 			
-			System.out.println("User " + getUsername() + " connected to server");
+			System.out.println("User " + username + " connected to server");
 			
-			PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
+			out = new PrintWriter(socket.getOutputStream(), true);
 			
-			BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+			in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 			
 			BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in));
 			
-			// first send your username
-			out.println(getUsername());
-			System.out.println("echo: " + in.readLine());
+			ListenFromServerThread listenFromServerThread = new ListenFromServerThread(in);
 			
-			System.out.println("Plese input message line:");
+			listenFromServerThread.start();
+			
+			// first send your username
+			out.println(username);
 			
 			String userInput;
 			
 			while ((userInput = stdIn.readLine()) != null) {
-
-				out.println(userInput);
-				System.out.println("echo: " + in.readLine());
+				
+				sendMessage(userInput);
 				
 			}
-			
-			clientSocket.close();
-			
-			
-		} catch (UnknownHostException e) {
 
-			System.out.println("Could not connect to server: " + getHost() + " on port " + getPort());
+			disconnect();
 			
-		} catch (IOException e) {
-			e.printStackTrace();
+		} catch (Exception e) {
+
+			System.out.println("Could not connect to server: " + host + " on port " + port);
+			
 		}
 		
 	}
 
-	public String getHost() {
-		return host;
+	/**
+	 * Send message from client.
+	 * @param message
+	 */
+	private void sendMessage(String message) {
+		
+		if (out == null) {
+			return;
+		}
+		
+		out.println(message);
+		
 	}
 
-	public void setHost(String host) {
-		this.host = host;
-	}
+	/** 
+	 * Disconnect client.
+	 */
+	private void disconnect() {
 
-	public int getPort() {
-		return port;
-	}
+		try {
+			
+			if (socket != null) {
+				socket.close();
+			}
 
-	public void setPort(int port) {
-		this.port = port;
-	}
+			if (in != null) {
+				in.close();
+			}
 
-	public String getUsername() {
-		return username;
-	}
+			if (out != null) {
+				out.close();
+			}
+			
+		} catch (Exception e) {
 
-	public void setUsername(String username) {
-		this.username = username;
+			System.out.println("Exception disconnecting client " + e.getMessage());
+			
+		}
+
+		System.out.println("User " + username + " has disconnected");
+		
 	}
 
 }
