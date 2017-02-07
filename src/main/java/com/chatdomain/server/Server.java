@@ -6,8 +6,12 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 
+import com.chatdomain.service.ServerService;
+
 /**
  * Server that waits on the port.
+ * <br>
+ * Can be started from command line - see {@link #main(String[])} method or from outside using {@link ServerService} methods.
  * 
  * @author Helena
  *
@@ -46,7 +50,7 @@ public class Server {
 	/**
 	 * Start server using command line (>java com.chatdomain.server.Server [port]).
 	 * 
-	 * @param args arg0 = port, default: 1500
+	 * @param args arg0 = port; default: 1500
 	 */
 	public static void main(String[] args) {
 		
@@ -91,7 +95,7 @@ public class Server {
 			
 		} catch (IOException e) {
 			
-			System.out.println("Could not start server on port: " + port);
+			System.out.println("Could not start server on port: " + port + " " + e.getMessage());
 			
 		}
 		

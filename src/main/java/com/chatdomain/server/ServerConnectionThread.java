@@ -59,18 +59,17 @@ public class ServerConnectionThread extends Thread {
 
 			System.out.println("Client " + username + " accapted");
 			
-			String inputLine;
-			String outputLine = "Welcome " + username;
+			out.println("Welcome " + username);
 			
-			out.println(outputLine);
+			broadcast("New user in chat: " + username);
+			
+			String inputLine;
 			
 			while ((inputLine = in.readLine()) != null) {
-
-				System.out.println("Reading line from client "+ username +": " + inputLine);
 				
-				outputLine = username + ": " + inputLine;
+				System.out.println("Reading line from client " + inputLine);
 				
-				broadcast(outputLine);
+				broadcast(inputLine);
 				
 			}
 			
@@ -78,13 +77,16 @@ public class ServerConnectionThread extends Thread {
 			
 		} catch (IOException e) {
 
-			System.out.println("Could not start thread on port: " + socket.getPort());
+			System.out.println("Could not start thread: " + e.getMessage());
 			
 		}
 		
 	}
 	
-	/** Broadcast message to all clients.*/
+	/**
+	 * Broadcast message to all other clients.
+	 * @param message 
+	 */
 	private void broadcast(String message) {
 		
 		if (serverConnectionThreads == null) {
@@ -93,19 +95,15 @@ public class ServerConnectionThread extends Thread {
 
 		for (ServerConnectionThread serverConnectionThread : serverConnectionThreads) {
 			
-			if (serverConnectionThread != this) {
+			serverConnectionThread.writeMessage(message);
 				
-				serverConnectionThread.writeMessage(message);
-				
-			}
-			
 		}
 		
 	}
 
 	/**
 	 * Write message to output.
-	 * @param message
+	 * @param message 
 	 */
 	private void writeMessage(String message) {
 
