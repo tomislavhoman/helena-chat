@@ -1,40 +1,27 @@
-package com.chatdomain.service;
+package com.chat.client;
 
 /**
- * Interface with which we can access client domain data from outside, so we can use it from any user interface.
+ * Client interface with which we can communicate with client from outside, so we can use it from any user interface.
  * 
  * @author Helena
  *
  */
-public interface ClientService {
+public interface Client {
 	
+	String EXIT = "exit";
+
 	/**
-	 * Start client on default host 'localhost' and port 1500.
+	 * Starts the client.
 	 * 
-	 * @return true if client successfully started, false otherwise
+	 * @param host Host name
+	 * @param port Port to which is connecting
+	 * @param username Client username
+	 * @throws Exception if client couldn't start
 	 */
-	public boolean startClient();
-	
+	public boolean login(String host, int port, String username);
+
 	/**
-	 * Start client with parameters for host and port.
-	 * 
-	 * @param host host; default 'localhost'
-	 * @param port port; default 1500
-	 * @return true if client successfully started, false otherwise
-	 * 
-	 */
-	public boolean startClient(String host, int port);
-	
-	/**
-	 * Login with username.
-	 * If username not set, default will be 'Anonimus'.
-	 * 
-	 * @param username 
-	 */
-	public void login(String username);
-	
-	/**
-	 * Send message from client.
+	 * Sends message from client.
 	 * 
 	 * @param message 
 	 */

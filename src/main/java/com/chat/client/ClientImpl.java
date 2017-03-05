@@ -1,216 +1,135 @@
-package com.chatdomain.client;
+package com.chat.client;
 
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.net.Socket;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-import com.chatdomain.service.ClientService;
+import com.chat.communication.CommunicationChannel;
+import com.chat.communication.CommunicationChannel.ReadListener;
+import com.chat.communication.MessageListener;
+import com.chat.log.Logger;
+import com.chat.threading.Scheduler;
+import com.chat.threading.Scheduler.Action;
+import com.chat.threading.Scheduler.Action1;
 
 /**
- * Client that is connecting to the server (host and port) and sends messages.
- * <br>
- * Can be started from command line - see {@link #main(String[])} method or from outside using {@link ClientService} methods.
+ * Client implementation that is connecting to the server (host and port) and sends messages.
  * 
  * @author Helena
  *
  */
-public class Client {
+public class ClientImpl implements Client {
 	
-	/** Host name.*/
-	private String host;
+	private final Logger logger;
 	
-	/** Port to which is connecting.*/
-	private int port;
+	/** Server communication channel.*/
+	private final CommunicationChannel serverChannel;
 	
-	/** Client username, if not logged in default 'Anonymous'.*/
-	private String username = "Anonymous";
+	private final MessageListener messageListener;
 	
-	/** Client socket.*/
-	private Socket socket;
+	private final Scheduler scheduler;
 	
-	/** Output writer.*/
-	private PrintWriter out;
+	private AtomicBoolean isListening = new AtomicBoolean(false);// TODO Volatile could also probably do
 	
-	/** Input reader.*/
-	private BufferedReader in;
+	/** Client username.*/
+	private String username;
 	
-	/** Standard input.*/
-	private BufferedReader stdIn;
-	
-	/**
-	 * Client with default values localhost 1500.
-	 */
-	public Client() {
-		
-		this("localhost", 1500);
-		
-	}
-
-	/**
-	 * Client with values in parameters.
-	 * @param host host
-	 * @param port port
-	 * @param username username
-	 */
-	public Client(String host, int port) {
+	public ClientImpl(Logger logger, 
+					  CommunicationChannel serverChannel, 
+					  MessageListener messageListener,
+					  Scheduler scheduler) {
 		
 		super();
-		this.host = host;
-		this.port = port;
-		
+		this.logger = logger;
+		this.serverChannel = serverChannel;
+		this.messageListener = messageListener;
+		this.scheduler = scheduler;
 	}
 
-	/**
-	 * Start client using command line (>java com.chatdomain.client.Client [host] [port]).
-	 * 
-	 * @param args arg0 - host, arg1 - port;
-	 * default: localhost 1500
-	 */
-	public static void main(String[] args) {
-
-		String host = args.length > 0 ? args[0] : "localhost";
-		
-		int port = args.length > 1 ? Integer.parseInt(args[1]) : 1500;
-
-		Client client = new Client(host, port);
-		
-		// Noting to do if client didn't start
-		if (!client.start()) {
-			return;
-		}
-		
-		System.out.println("Input your name:");
-		
-		try {
-		
-			// first send your username
-			client.login(client.stdIn.readLine());
-			
-			String userInput;
-			
-			while ((userInput = client.stdIn.readLine()) != null) {
-				
-				client.sendMessage(client.username + ": " + userInput);
-				
-			}
-	
-		} catch (IOException e) {
-			
-			System.out.println("Error reading line " + e.getMessage());
-			
-		}
-
-		client.logout();
-		
-		client.disconnect();
-		
-	}
-
-	/**
-	 * Starts the client.
-	 * @return true if client successfully started, false otherwise
-	 */
-	public boolean start() {
+	@Override
+	public boolean login(String host, int port, String username) {
 		
 		try {
 			
-			System.out.println("Connecting to " + host + " on port " + port);
-			
-			socket = new Socket(host, port);
-			
-			System.out.println("Connected to server");
-			
-			out = new PrintWriter(socket.getOutputStream(), true);
-			
-			in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-			
-			stdIn = new BufferedReader(new InputStreamReader(System.in));
-			
-			ListenFromServerThread listenFromServerThread = new ListenFromServerThread(in);
-			
-			listenFromServerThread.start();
+			this.username = username;
+			this.scheduler.dispatch(new Action1<Action>() {
+
+				@Override
+				public void call(Action ready) {
+					listenServer(ready);
+				}
+			});
+
+			logger.log("connected to server: " + host + " on port " + port);
+			return true;
 			
 		} catch (Exception e) {
-
-			System.out.println("Could not connect to server: " + host + " on port " + port + " " + e.getMessage());
-			
+			logger.log("Could not connect to server: " + host + " on port " + port + " " + e.getMessage());
 			return false;
-			
 		}
-
-		return true;
 
 	}
-
+	
 	/**
-	 * Login with username.
-	 * @param username 
+	 * Open server channel and start listening.
+	 * 
+	 * @param ready 
 	 */
-	public void login(String username) {
+	private void listenServer(Action ready) {
 		
-		// if it wasn't sent it stays 'Anonymous'
-		if (username != null && username.length() > 0) {
-		
-			this.username = username;
-		
+		if (messageListener == null || serverChannel == null) {
+			return;
 		}
+
+		serverChannel.open();
+		isListening.set(true);
 		
-		sendMessage(this.username);
+		sendMessage(username + " has logged in");
 		
+		while (isListening.get()) {
+			
+			try {
+				
+				serverChannel.listen(new ReadListener() {
+					
+					@Override
+					public void onMessage(String message) {
+							
+						messageListener.onMessageReceived(message);
+					}
+				});
+				ready.call();
+				
+			} catch (IOException e) {
+				logger.log("Connection closed " + e.getMessage());
+				break;
+			}
+		}
 	}
 
 	/**
 	 * Logout from chat.
 	 */
+	@Override
 	public void logout() {
 		
-		sendMessage(username + " left chat");
-		
+		if (serverChannel != null) {
+			serverChannel.close();
+		}
+		isListening.set(false);
 	}
+	
 	/**
 	 * Send message from client.
 	 * @param message
 	 */
+	@Override
 	public void sendMessage(String message) {
 		
-		if (out == null) {
-			return;
+		if (serverChannel != null) {
+			serverChannel.write(message);
 		}
 		
-		out.println(message);
-		
 	}
-
-	/** 
-	 * Disconnect client.
-	 */
-	private void disconnect() {
-
-		try {
-			
-			if (socket != null) {
-				socket.close();
-			}
-
-			if (in != null) {
-				in.close();
-			}
-
-			if (out != null) {
-				out.close();
-			}
-			
-		} catch (Exception e) {
-
-			System.out.println("Exception disconnecting client " + e.getMessage());
-			
-		}
-
-		System.out.println("User " + username + " has disconnected");
-		
-	}
-
+	
 }

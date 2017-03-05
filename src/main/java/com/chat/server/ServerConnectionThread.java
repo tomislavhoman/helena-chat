@@ -1,11 +1,13 @@
-package com.chatdomain.server;
+package com.chat.server;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.net.Socket;
 import java.util.ArrayList;
+
+import com.chat.client.Client;
+import com.chat.communication.CommunicationChannel;
+import com.chat.communication.MessageListener;
+import com.chat.communication.CommunicationChannel.ReadListener;
+import com.chat.log.Logger;
 
 /**
  * For every connection from each client new thread is started.
@@ -15,88 +17,80 @@ import java.util.ArrayList;
  */
 public class ServerConnectionThread extends Thread {
 	
-	/** Socket on which connection to client is accepted.*/
-	private Socket socket;
+	private final Logger logger;
+	
+	/** User communication channel.*/
+	private CommunicationChannel userChannel;
 
 	/** Save all connected threads.*/
 	private ArrayList<ServerConnectionThread> serverConnectionThreads;
 	
-	/** Output writer.*/
-	private PrintWriter out;
+	private MessageListener messageListener;
 	
-	/** Input reader.*/
-	private BufferedReader in;
-	
-	/** Client username that is connected on thread.*/
-	private String username;
-
-	/**
-	 * Thread for socket connection with client.
-	 * @param socket socket
-	 * @param serverConnectionThreads all threads
-	 */
-	public ServerConnectionThread(Socket socket, ArrayList<ServerConnectionThread> serverConnectionThreads) {
+	public ServerConnectionThread(Logger logger,
+								  CommunicationChannel userChannel, 
+								  ArrayList<ServerConnectionThread> serverConnectionThreads,
+								  MessageListener messageListener) {
 		
 		super();
-		this.socket = socket;
+		this.logger = logger;
+		this.userChannel = userChannel;
 		this.serverConnectionThreads = serverConnectionThreads;
+		this.messageListener = messageListener;
 		
 	}
 	
 	@Override
 	public void run() {
 		
-		try {
-
-			serverConnectionThreads.add(this);
-
-			out = new PrintWriter(socket.getOutputStream(), true);
-			
-			in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-			
-			// first line that is sent is username
-			username = in.readLine(); 
-
-			System.out.println("Client " + username + " accapted");
-			
-			out.println("Welcome " + username);
-			
-			broadcast("New user in chat: " + username);
-			
-			String inputLine;
-			
-			while ((inputLine = in.readLine()) != null) {
-				
-				System.out.println("Reading line from client " + inputLine);
-				
-				broadcast(inputLine);
-				
-			}
-			
-			close();
-			
-		} catch (IOException e) {
-
-			System.out.println("Could not start thread: " + e.getMessage());
-			
+		if (userChannel == null || messageListener == null) {
+			return;
 		}
-		
+
+		if (serverConnectionThreads != null) {
+			serverConnectionThreads.add(this);
+		}
+	
+		while (userChannel.isOpened()) {
+			
+			try {
+	
+				userChannel.listen(new ReadListener() {
+					
+					@Override
+					public void onMessage(String message) {
+						
+						messageListener.onMessageReceived(message);
+						
+						if (Client.EXIT.equals(message)) {
+							close();
+						} else {
+							broadcast(message);
+						}
+						
+					}
+				});
+	
+			} catch (IOException e) {
+				logger.log("Connection closed " + e.getMessage());
+				break;
+			}
+		}
 	}
 	
 	/**
 	 * Broadcast message to all other clients.
 	 * @param message 
+	 * @throws IOException 
 	 */
 	private void broadcast(String message) {
 		
-		if (serverConnectionThreads == null) {
+		if (serverConnectionThreads == null || serverConnectionThreads.size() == 0) {
 			return;
 		}
 
 		for (ServerConnectionThread serverConnectionThread : serverConnectionThreads) {
-			
 			serverConnectionThread.writeMessage(message);
-				
 		}
 		
 	}
@@ -104,14 +98,15 @@ public class ServerConnectionThread extends Thread {
 	/**
 	 * Write message to output.
 	 * @param message 
+	 * @throws IOException 
 	 */
 	private void writeMessage(String message) {
 
-		if (out == null) {
+		if (userChannel == null) {
 			return;
 		}
 		
-		out.println(message);
+		userChannel.write(message);
 		
 	}
 
@@ -120,37 +115,12 @@ public class ServerConnectionThread extends Thread {
 	 */
 	public void close() {
 
-		try {
-			
-			if (socket != null) {
-				
-				socket.close();
-				
-			}
-
-			if (out != null) {
-				
-				out.close();
-				
-			}
-
-			if (in != null) {
-				
-				in.close();
-				
-			}
-			
-		} catch (Exception e) {
-
-			System.out.println("Exception closing thread " + e.getMessage());
-			
+		if (userChannel != null) {
+			userChannel.close();
 		}
 		
-		System.out.println("User " + username + " has disconnected");
-
 		serverConnectionThreads.remove(this);
 		
 	}
-	
 
 }

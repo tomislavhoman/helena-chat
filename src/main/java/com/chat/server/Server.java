@@ -1,27 +1,22 @@
-package com.chatdomain.service;
+package com.chat.server;
 
 /**
- * Interface with which we can access server domain data from outside, so we can use it from any user interface.
+ * Server interface with which we can communicate with server from outside, so we can use it from any user interface.
  * 
  * @author Helena
  *
  */
-public interface ServerService {
-	
+public interface Server {
+
 	/**
-	 * Start server on default port 1500.
-	 */
-	public void startServer();
-	
-	/**
-	 * Start server on port from parameter.
+	 * Starts the server.
 	 * 
-	 * @param port  port; default 1500
+	 * @param port port on which server is waiting
 	 */
-	public void startServer(int port);
+	public void start(int port);
 	
 	/**
 	 * Stop server.
 	 */
-	public void stopServer();
+	public void stop();
 }

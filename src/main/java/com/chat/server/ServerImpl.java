@@ -1,125 +1,93 @@
-package com.chatdomain.server;
+package com.chat.server;
 
 
-import java.io.IOException;
-import java.net.ServerSocket;
-import java.net.Socket;
 import java.util.ArrayList;
 
-import com.chatdomain.service.ServerService;
+import com.chat.communication.CommunicationChannel;
+import com.chat.communication.IncomingCommunication;
+import com.chat.communication.IncomingCommunication.CommunicationListener;
+import com.chat.communication.MessageListener;
+import com.chat.log.Logger;
 
 /**
- * Server that waits on the port.
- * <br>
- * Can be started from command line - see {@link #main(String[])} method or from outside using {@link ServerService} methods.
+ * Server implementation that waits on specific port.
  * 
  * @author Helena
  *
  */
-public class Server {
+public class ServerImpl implements Server {
 	
-	/** Port on which is waiting.*/
-	private int port;
+	private final Logger logger;
 	
+	/** Incoming communication where server waits for clients to connect.*/
+	private IncomingCommunication incommingCommunication;
+
 	/** True= server is running, false = server has stopped.*/
 	private boolean isRunning = true;
 	
 	/** Save all connected threads.*/
 	private ArrayList<ServerConnectionThread> serverConnectionThreads = new ArrayList<ServerConnectionThread>();
-
-	/**
-	 * Server on default port 1500.
-	 */
-	public Server() {
-		
-		this(1500);
-		
-	}
-
-	/**
-	 * Server on port from parameter.
-	 * @param port port
-	 */
-	public Server(int port) {
+	
+	/** Listener for messages.*/
+	private MessageListener messageListener;
+	
+	public ServerImpl(Logger logger, 
+					  IncomingCommunication incomingCommunication, 
+					  MessageListener messageListener) {
 		
 		super();
-		this.port = port;
+		this.logger = logger;
+		this.incommingCommunication = incomingCommunication;
+		this.messageListener = messageListener;
 		
 	}
 
-	/**
-	 * Start server using command line (>java com.chatdomain.server.Server [port]).
-	 * 
-	 * @param args arg0 = port; default: 1500
-	 */
-	public static void main(String[] args) {
-		
-		int port = args.length > 0 ? Integer.parseInt(args[0]) : 1500;
-		
-		Server server = new Server(port);
-		
-		server.start();
-		
-	}
+	@Override
+	public void start(int port) {
 
-	/**
-	 * Starts the server.
-	 */
-	public void start() {
+		logger.log("Waiting for clients on port " + port + "...");
 		
-		try {
-			
-			ServerSocket serverSocket = new ServerSocket(port);
-			
-			System.out.println("Waiting for clients on port " + port + "...");
-			
-			while (isRunning) {
-				
-				// start new thread after accepting connection with client
-				ServerConnectionThread serverConnectionThread = new ServerConnectionThread(serverSocket.accept(),
-																						   serverConnectionThreads);
-				
-				serverConnectionThread.start();
-				
-			}
+		while (isRunning) {
 
-			System.out.println("Server stop running");
-			
-			serverSocket.close();
-			
-			for (ServerConnectionThread serverConnectionThread : serverConnectionThreads) {
+			incommingCommunication.listen(new CommunicationListener() {
 				
-				serverConnectionThread.close();
-				
-			}
-			
-		} catch (IOException e) {
-			
-			System.out.println("Could not start server on port: " + port + " " + e.getMessage());
-			
+				@Override
+				public void onCommunicationChannelOpened(CommunicationChannel clientCommunicationCahnnel) {
+		
+					// start new thread after accepting connection with client
+					ServerConnectionThread serverConnectionThread = new ServerConnectionThread(logger,
+																							   clientCommunicationCahnnel,
+																							   serverConnectionThreads,
+																							   messageListener);
+					serverConnectionThread.start();
+					
+				}
+			});
 		}
-		
+			
 	}
-	
-	/**
-	 * If needed to stop the server.
-	 */
-	@SuppressWarnings("resource")
+
+	@Override
 	public void stop() {
 		
 		isRunning = false;
 		
 		try {
 			
-			// connect to itself for exit
-			new Socket("localhost", port);
+			incommingCommunication.close();
+			
+			if (serverConnectionThreads != null && serverConnectionThreads.size() > 0) {
+	
+				for (ServerConnectionThread serverConnectionThread : serverConnectionThreads) {
+					
+					serverConnectionThread.close();
+					
+				}
+			}
 			
 		} catch (Exception e) {
-
-			System.out.println("Exception closing server " + e.getMessage());
-			
+			logger.log("Exception closing server " + e.getMessage());
 		}
-		
 	}
 
 }
