@@ -11,9 +11,9 @@ public interface Server {
 	/**
 	 * Starts the server.
 	 * 
-	 * @param port port on which server is waiting
+	 * @param serverConnectionThread 
 	 */
-	public void start(int port);
+	public void start(ServerConnectionThread serverConnectionThread);
 	
 	/**
 	 * Stop server.

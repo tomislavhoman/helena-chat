@@ -29,7 +29,7 @@ public class ClientImpl implements Client {
 	
 	private final Scheduler scheduler;
 	
-	private AtomicBoolean isListening = new AtomicBoolean(false);// TODO Volatile could also probably do
+	private AtomicBoolean isListening = new AtomicBoolean(false);
 	
 	/** Client username.*/
 	private String username;

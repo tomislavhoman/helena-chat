@@ -1,9 +1,12 @@
 package com.chat.server;
 
+import java.util.ArrayList;
+
+import com.chat.communication.CommunicationChannel;
+import com.chat.communication.IncomingCommunication.CommunicationListener;
 import com.chat.communication.IncomingNetworkCommunication;
 import com.chat.communication.MessageListener;
 import com.chat.log.ConsoleLogger;
-import com.chat.threading.NewThreadScheduler;
 
 /**
  * Console server app that can be started from command line (>java com.chat.server.ServerApp [port]).
@@ -34,9 +37,30 @@ public class ServerApp {
 			}
 		};
 		
-		ServerImpl server = new ServerImpl(logger, incomingNetworkCommunication, messageListener);
+		ArrayList<ServerConnectionThread> serverConnectionThreads = new ArrayList<ServerConnectionThread>();
+		
+		ServerImpl server = new ServerImpl(logger, incomingNetworkCommunication, serverConnectionThreads);
 
-		server.start(port);
+		logger.log("Waiting for clients on port " + port + "...");
+		
+		while (server.isRunning()) {
+
+			incomingNetworkCommunication.listen(new CommunicationListener() {
+				
+				@Override
+				public void onCommunicationChannelOpened(CommunicationChannel clientCommunicationCahnnel) {
+
+					// start new thread after accepting connection with client
+					ServerConnectionThread serverConnectionThread = new ServerConnectionThread(logger,
+																							   clientCommunicationCahnnel,
+																							   serverConnectionThreads,
+																							   messageListener);
+					server.start(serverConnectionThread);
+
+					
+				}
+			});
+		}
 
 	}
 

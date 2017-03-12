@@ -3,10 +3,7 @@ package com.chat.server;
 
 import java.util.ArrayList;
 
-import com.chat.communication.CommunicationChannel;
 import com.chat.communication.IncomingCommunication;
-import com.chat.communication.IncomingCommunication.CommunicationListener;
-import com.chat.communication.MessageListener;
 import com.chat.log.Logger;
 
 /**
@@ -26,44 +23,23 @@ public class ServerImpl implements Server {
 	private boolean isRunning = true;
 	
 	/** Save all connected threads.*/
-	private ArrayList<ServerConnectionThread> serverConnectionThreads = new ArrayList<ServerConnectionThread>();
-	
-	/** Listener for messages.*/
-	private MessageListener messageListener;
+	private ArrayList<ServerConnectionThread> serverConnectionThreads;
 	
 	public ServerImpl(Logger logger, 
 					  IncomingCommunication incomingCommunication, 
-					  MessageListener messageListener) {
+					  ArrayList<ServerConnectionThread> serverConnectionThreads) {
 		
 		super();
 		this.logger = logger;
 		this.incommingCommunication = incomingCommunication;
-		this.messageListener = messageListener;
+		this.serverConnectionThreads = serverConnectionThreads;
 		
 	}
 
 	@Override
-	public void start(int port) {
+	public void start(ServerConnectionThread serverConnectionThread) {
 
-		logger.log("Waiting for clients on port " + port + "...");
-		
-		while (isRunning) {
-
-			incommingCommunication.listen(new CommunicationListener() {
-				
-				@Override
-				public void onCommunicationChannelOpened(CommunicationChannel clientCommunicationCahnnel) {
-		
-					// start new thread after accepting connection with client
-					ServerConnectionThread serverConnectionThread = new ServerConnectionThread(logger,
-																							   clientCommunicationCahnnel,
-																							   serverConnectionThreads,
-																							   messageListener);
-					serverConnectionThread.start();
-					
-				}
-			});
-		}
+		serverConnectionThread.start();
 			
 	}
 
@@ -88,6 +64,10 @@ public class ServerImpl implements Server {
 		} catch (Exception e) {
 			logger.log("Exception closing server " + e.getMessage());
 		}
+	}
+	
+	public boolean isRunning() {
+		return isRunning;
 	}
 
 }
