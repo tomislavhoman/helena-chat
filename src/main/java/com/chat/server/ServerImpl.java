@@ -49,7 +49,7 @@ public class ServerImpl implements Server {
 		isRunning = false;
 		
 		try {
-			
+
 			incommingCommunication.close();
 			
 			if (serverConnectionThreads != null && serverConnectionThreads.size() > 0) {
@@ -60,12 +60,15 @@ public class ServerImpl implements Server {
 					
 				}
 			}
+
+			logger.log("Server closed");
 			
 		} catch (Exception e) {
 			logger.log("Exception closing server " + e.getMessage());
 		}
 	}
 	
+	@Override
 	public boolean isRunning() {
 		return isRunning;
 	}

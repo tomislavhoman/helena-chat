@@ -19,4 +19,10 @@ public interface Server {
 	 * Stop server.
 	 */
 	public void stop();
+
+	/**
+	 * 
+	 * @return true if server is running, false otherwise
+	 */
+	public boolean isRunning();
 }

@@ -27,8 +27,8 @@ public class ServerApp {
 		
 		int port = args.length > 0 ? Integer.parseInt(args[0]) : PORT_1500;
 		
-		IncomingNetworkCommunication incomingNetworkCommunication = new IncomingNetworkCommunication(port);
 		ConsoleLogger logger = new ConsoleLogger("server");
+		IncomingNetworkCommunication incomingNetworkCommunication = new IncomingNetworkCommunication(port, logger);
 		MessageListener messageListener = new MessageListener() {
 			
 			@Override

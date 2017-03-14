@@ -3,6 +3,8 @@ package com.chat.communication;
 import java.io.IOException;
 import java.net.ServerSocket;
 
+import com.chat.log.ConsoleLogger;
+
 /**
  * Incoming network communication from serverSocket.
  * 
@@ -13,8 +15,11 @@ public class IncomingNetworkCommunication implements IncomingCommunication {
 	
 	/** Server socket that listens on a port.*/
 	private ServerSocket serverSocket;
+	private ConsoleLogger logger;
 
-	public IncomingNetworkCommunication(int port) {
+	public IncomingNetworkCommunication(int port, ConsoleLogger logger) {
+		
+		this.logger = logger;
 
 		try {
 			
@@ -29,7 +34,7 @@ public class IncomingNetworkCommunication implements IncomingCommunication {
 	@Override
 	public void listen(CommunicationListener listener) {
 		
-		if (serverSocket == null) {
+		if (serverSocket == null || serverSocket.isClosed()) {
 			return;
 		}
 
@@ -40,8 +45,8 @@ public class IncomingNetworkCommunication implements IncomingCommunication {
 
 			listener.onCommunicationChannelOpened(clientChannel);
 
-		} catch (IOException e) {
-			e.printStackTrace();
+		} catch (Exception e) {
+			logger.log("Could not open communication chanel");
 		}
 		
 	}
@@ -49,7 +54,7 @@ public class IncomingNetworkCommunication implements IncomingCommunication {
 	@Override
 	public void close() {
 		
-		if (serverSocket == null) {
+		if (serverSocket == null || serverSocket.isClosed()) {
 			return;
 		}
 
@@ -58,7 +63,7 @@ public class IncomingNetworkCommunication implements IncomingCommunication {
 			serverSocket.close();
 			
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.log("Could not close communication chanel");
 		}
 		
 	}
